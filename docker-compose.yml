@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  mcp-filesystem-server:
+    image: mcp-filesystem-server
+    container_name: mcp-filesystem-server
+    ports:
+      - "9180:8080"
+    volumes:
+      - .:/data
+    command: [
+      "--transport", "http",
+      "--host", "0.0.0.0",
+      "/data"
+    ]
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
