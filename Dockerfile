@@ -17,11 +17,11 @@ RUN go build -ldflags="-s -w" -o server .
 
 FROM alpine:latest
 
-WORKDIR /app
+WORKDIR /data
 
 # Copy the built binary from the builder stage
-COPY --from=builder /app/server ./
+COPY --from=builder /app/server /app/
 
 # The container will by default pass '/app' as the allowed directory if no other command line arguments are provided
-ENTRYPOINT ["./server"]
-CMD ["/app"]
+ENTRYPOINT ["/app/server"]
+CMD ["/data"]

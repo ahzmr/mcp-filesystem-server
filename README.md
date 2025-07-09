@@ -97,10 +97,45 @@ go install github.com/mark3labs/mcp-filesystem-server@latest
 
 #### As a standalone server
 
-Start the MCP server with allowed directories:
+**Standard Input/Output Transport (Default)**
+
+Start the MCP server with allowed directories using stdio transport:
 
 ```bash
 mcp-filesystem-server /path/to/allowed/directory [/another/allowed/directory ...]
+```
+
+**Streamable HTTP Transport**
+
+Start the MCP server with HTTP transport for remote access:
+
+```bash
+# Start HTTP server on default port 8080
+mcp-filesystem-server --transport http /path/to/allowed/directory
+
+# Start HTTP server on custom port and host
+mcp-filesystem-server --transport http --host 0.0.0.0 --port 3000 /path/to/allowed/directory
+```
+
+The HTTP transport provides:
+- **MCP endpoint**: `http://localhost:8080/mcp` (supports both GET and POST)
+- **Health check**: `http://localhost:8080/health`
+- **Server info**: `http://localhost:8080/`
+- **CORS support** for web applications
+- **Session management** via `Mcp-Session-Id` headers
+- **Streamable responses** using Server-Sent Events when needed
+
+**Command Line Options**
+
+```bash
+# Show help
+mcp-filesystem-server --help
+
+# Available options:
+#   --transport string   Transport type: stdio or http (default "stdio")
+#   --host string        Host to bind to (http transport only) (default "localhost")
+#   --port int           Port to listen on (http transport only) (default 8080)
+#   --help               Show help message
 ```
 
 #### As a library in your Go project
@@ -132,7 +167,9 @@ func main() {
 
 ### Usage with Model Context Protocol
 
-To integrate this server with apps that support MCP:
+**Standard Input/Output Transport**
+
+To integrate this server with apps that support MCP using stdio transport:
 
 ```json
 {
@@ -144,6 +181,31 @@ To integrate this server with apps that support MCP:
   }
 }
 ```
+
+**Streamable HTTP Transport**
+
+For remote MCP servers using HTTP transport, you can use tools like [mcp-remote](https://github.com/modelcontextprotocol/mcp-remote) to bridge local MCP clients with remote HTTP servers:
+
+1. Start the MCP server with HTTP transport:
+   ```bash
+   mcp-filesystem-server --transport http --host 0.0.0.0 --port 8080 /path/to/allowed/directory
+   ```
+
+2. Configure your MCP client to connect via mcp-remote:
+   ```json
+   {
+     "mcpServers": {
+       "filesystem": {
+         "command": "npx",
+         "args": ["@modelcontextprotocol/mcp-remote", "http://localhost:8080/mcp"]
+       }
+     }
+   }
+   ```
+
+Alternatively, if your MCP client natively supports HTTP transport, you can connect directly to:
+- **Server URL**: `http://localhost:8080/mcp`
+- **Transport**: Streamable HTTP
 
 ### Docker
 
