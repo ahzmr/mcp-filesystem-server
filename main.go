@@ -7,10 +7,33 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/mark3labs/mcp-filesystem-server/filesystemserver"
 	"github.com/mark3labs/mcp-go/server"
 )
+
+// parseToolConfig parses the tool configuration string
+func parseToolConfig(toolsStr string) *filesystemserver.ToolConfig {
+	toolsStr = strings.TrimSpace(toolsStr)
+	if toolsStr == "" || toolsStr == "all" {
+		return &filesystemserver.ToolConfig{EnableAll: true}
+	}
+
+	tools := strings.Split(toolsStr, ",")
+	enabledTools := make([]string, 0, len(tools))
+	for _, tool := range tools {
+		tool = strings.TrimSpace(tool)
+		if tool != "" {
+			enabledTools = append(enabledTools, tool)
+		}
+	}
+
+	return &filesystemserver.ToolConfig{
+		EnabledTools: enabledTools,
+		EnableAll:    false,
+	}
+}
 
 func main() {
 	// Define command line flags
@@ -18,6 +41,7 @@ func main() {
 		transport = flag.String("transport", "stdio", "Transport type: stdio or http")
 		port      = flag.Int("port", 8080, "Port to listen on (http transport only)")
 		host      = flag.String("host", "localhost", "Host to bind to (http transport only)")
+		tools     = flag.String("tools", "all", "Comma-separated list of tools to enable (default: all). Supports wildcards like 'read_*,write_*'")
 		help      = flag.Bool("help", false, "Show help message")
 	)
 	flag.Parse()
@@ -30,9 +54,15 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\nTransport types:\n")
 		fmt.Fprintf(os.Stderr, "  stdio: Standard input/output (default, for local MCP clients)\n")
 		fmt.Fprintf(os.Stderr, "  http:  Streamable HTTP transport (for remote MCP clients)\n")
+		fmt.Fprintf(os.Stderr, "\nTool configuration:\n")
+		fmt.Fprintf(os.Stderr, "  all:                    Enable all available tools (default)\n")
+		fmt.Fprintf(os.Stderr, "  tool1,tool2:           Enable specific tools\n")
+		fmt.Fprintf(os.Stderr, "  read_*,write_*:        Enable tools matching wildcards\n")
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
-		fmt.Fprintf(os.Stderr, "  %s /home/user/documents                                    # stdio transport\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s --transport http --port 8080 /home/user/documents      # http transport\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s /home/user/documents                                    # stdio transport, all tools\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --transport http --port 8080 /home/user/documents      # http transport, all tools\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --tools read_file,write_file /home/user/documents       # only read and write tools\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s --tools 'read_*,list_*' /home/user/documents            # tools matching wildcards\n", os.Args[0])
 		os.Exit(0)
 	}
 
@@ -45,8 +75,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Parse tool configuration
+	toolConfig := parseToolConfig(*tools)
+
 	// Create the filesystem server
-	fss, err := filesystemserver.NewFilesystemServer(allowedDirs)
+	fss, err := filesystemserver.NewFilesystemServer(allowedDirs, toolConfig)
 	if err != nil {
 		log.Fatalf("Failed to create server: %v", err)
 	}
